@@ -1,35 +1,51 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>AI Background Remover</title>
+  <title>Free Background Remover Tool | Remove BG Online</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- SEO -->
+  <meta name="description" content="Remove image background online for free. Fast and easy background remover tool.">
+  <meta name="keywords" content="background remover, remove bg online, free bg remover">
+
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/body-pix"></script>
 
   <style>
     body {
       font-family: Arial;
-      background: #0f172a;
+      background: linear-gradient(135deg,#0f172a,#020617);
       color: white;
       text-align: center;
       padding: 20px;
     }
 
+    h1 { color: #38bdf8; }
+
     .box {
+      background: rgba(255,255,255,0.05);
+      padding: 20px;
+      border-radius: 15px;
       max-width: 400px;
       margin: auto;
     }
 
-    button {
-      padding: 12px;
+    input, button {
       width: 100%;
-      background: #22c55e;
-      border: none;
+      padding: 12px;
+      margin: 8px 0;
       border-radius: 10px;
-      margin-top: 10px;
+      border: none;
+    }
+
+    button {
+      background: #22c55e;
+      font-weight: bold;
       cursor: pointer;
     }
 
-    img {
-      margin-top: 20px;
+    canvas {
+      margin-top: 15px;
       max-width: 100%;
     }
   </style>
@@ -37,49 +53,61 @@
 
 <body>
 
-<h2>🔥 AI Background Remover</h2>
+<h1>🖼️ Background Remover</h1>
+<p>Remove image background instantly (Free)</p>
 
 <div class="box">
-  <input type="file" id="fileInput">
+
+  <input type="file" id="upload">
+
   <button onclick="removeBG()">Remove Background</button>
-  <img id="output">
+
+  <canvas id="canvas"></canvas>
+
+  <button onclick="download()">Download Image</button>
+
 </div>
 
 <script>
+let img = new Image();
+let canvas = document.getElementById("canvas");
+let ctx = canvas.getContext("2d");
+
+document.getElementById("upload").addEventListener("change", function(e){
+  let file = e.target.files[0];
+  let reader = new FileReader();
+  reader.onload = function(event){
+    img.src = event.target.result;
+  }
+  reader.readAsDataURL(file);
+});
+
 async function removeBG() {
-  const file = document.getElementById("fileInput").files[0];
+  const net = await bodyPix.load();
 
-  if (!file) {
-    alert("Please upload image");
-    return;
-  }
+  canvas.width = img.width;
+  canvas.height = img.height;
 
-  const formData = new FormData();
-  formData.append("image_file", file);
+  ctx.drawImage(img, 0, 0);
 
-  try {
-    const res = await fetch("https://api.remove.bg/v1.0/removebg", {
-      method: "POST",
-      headers: {
-        "X-Api-Key": 2ErNpK7rpeReEHrYyxTzkL7K
-      },
-      body: formData
-    });
+  const segmentation = await net.segmentPerson(img);
 
-    if (!res.ok) {
-      const err = await res.text();
-      alert("API Error: " + err);
-      return;
+  const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+  for (let i = 0; i < segmentation.data.length; i++) {
+    if (segmentation.data[i] === 0) {
+      imgData.data[i * 4 + 3] = 0; // make transparent
     }
-
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-
-    document.getElementById("output").src = url;
-
-  } catch (error) {
-    alert("Something went wrong");
   }
+
+  ctx.putImageData(imgData, 0, 0);
+}
+
+function download() {
+  let link = document.createElement("a");
+  link.download = "no-bg.png";
+  link.href = canvas.toDataURL();
+  link.click();
 }
 </script>
 
